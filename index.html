@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo to Line-by-Line QR Code Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        /* Custom spinner for loading state */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">📸 Photo to QR Scanner</h1>
+            <p class="text-gray-600">Snap a photo of text to generate a unique QR code for every single line.</p>
+        </header>
+
+        <div class="bg-white p-6 rounded-xl shadow-md mb-6 flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <label class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg cursor-pointer transition-all shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                <span>Take Photo / Upload Image</span>
+                <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
+            </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div id="previewContainer" class="bg-white p-4 rounded-xl shadow-md flex flex-col items-center justify-center min-h-[250px] border-2 border-dashed border-gray-300">
+                <p id="previewPlaceholder" class="text-gray-400 text-sm text-center">Your uploaded image will appear here</p>
+                <img id="imagePreview" class="max-h-64 rounded-lg hidden shadow-sm" alt="Preview">
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-md flex flex-col min-h-[250px]">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2 border-b pb-1">Detected Text</h3>
+                <div id="statusContainer" class="hidden flex-col items-center justify-center flex-grow py-4">
+                    <div class="spinner mb-2"></div>
+                    <p id="statusText" class="text-blue-600 font-medium text-sm">Initializing OCR...</p>
+                </div>
+                <textarea id="textOutput" class="w-full flex-grow p-2 border border-gray-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Extracted text lines will appear here. You can manually edit them before generating QRs."></textarea>
+                <button id="regenerateBtn" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition-all hidden">
+                    Refresh QR Codes
+                </button>
+            </div>
+        </div>
+
+        <div id="qrSection" class="hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>🎯 Generated QR Codes</span>
+                <span id="qrCount" class="bg-blue-100 text-blue-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">0</span>
+            </h2>
+            <div id="qrGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewPlaceholder = document.getElementById('previewPlaceholder');
+        const previewContainer = document.getElementById('previewContainer');
+        const textOutput = document.getElementById('textOutput');
+        const statusContainer = document.getElementById('statusContainer');
+        const statusText = document.getElementById('statusText');
+        const regenerateBtn = document.getElementById('regenerateBtn');
+        const qrSection = document.getElementById('qrSection');
+        const qrGrid = document.getElementById('qrGrid');
+        const qrCount = document.getElementById('qrCount');
+
+        // Listen for image capture / file upload
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Show image preview
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                imagePreview.src = event.target.result;
+                imagePreview.classList.remove('hidden');
+                previewPlaceholder.classList.add('hidden');
+                previewContainer.classList.remove('border-dashed');
+                
+                // Trigger OCR processing
+                processImage(file);
+            }
+            reader.readAsDataURL(file);
+        });
+
+        // Tesseract OCR Logic
+        async function processImage(file) {
+            textOutput.value = '';
+            textOutput.classList.add('hidden');
+            statusContainer.classList.remove('hidden');
+            regenerateBtn.classList.add('hidden');
+            qrSection.classList.add('hidden');
+
+            try {
+                // Initialize worker and recognize text
+                const worker = await Tesseract.createWorker('eng');
+                
+                // Track progress
+                worker.logger = (m) => {
+                    if (m.status === 'recognizing text') {
+                        statusText.innerText = `Analyzing text: ${Math.round(m.progress * 100)}%`;
+                    } else {
+                        statusText.innerText = m.status;
+                    }
+                };
+
+                const { data: { text } } = await worker.recognize(file);
+                await worker.terminate();
+
+                // Clean and display text
+                textOutput.value = text;
+                statusContainer.classList.add('hidden');
+                textOutput.classList.remove('hidden');
+                regenerateBtn.classList.remove('hidden');
+
+                // Generate QR codes from the text
+                generateQRCodes(text);
+
+            } catch (error) {
+                console.error(error);
+                statusText.innerText = "Error scanning image. Please try again.";
+                statusContainer.querySelector('.spinner').classList.add('hidden');
+            }
+        }
+
+        // Generate QR Codes via QuickChart.io
+        function generateQRCodes(text) {
+            qrGrid.innerHTML = ''; // Clear previous results
+            
+            // Split by lines, filter out empty/whitespace lines
+            const lines = text.split('\n')
+                              .map(line => line.trim())
+                              .filter(line => line.length > 0);
+
+            if (lines.length === 0) {
+                qrSection.classList.add('hidden');
+                return;
+            }
+
+            qrCount.innerText = lines.length;
+            qrSection.classList.remove('hidden');
+
+            lines.forEach((line, index) => {
+                // Encode the text line properly for URL inclusion
+                const encodedText = encodeURIComponent(line);
+                // QuickChart.io QR Code endpoint configuration
+                const qrUrl = `https://quickchart.io/qr?text=${encodedText}&size=200&margin=2&ecLevel=M`;
+
+                // Create Card element
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-xl shadow border border-gray-100 flex flex-col items-center justify-between text-center transition-all hover:shadow-md";
+
+                card.innerHTML = `
+                    <div class="w-full text-xs font-semibold text-gray-400 mb-2 text-left">LINE ${index + 1}</div>
+                    <div class="bg-gray-50 p-2 rounded-lg mb-3 flex items-center justify-center min-h-[160px] min-w-[160px]">
+                        <img src="${qrUrl}" alt="QR Code for line ${index + 1}" class="w-40 h-40 object-contain" loading="lazy">
+                    </div>
+                    <p class="text-xs text-gray-700 font-mono break-all line-clamp-2 w-full bg-gray-50 p-1.5 rounded border border-gray-200" title="${line}">
+                        ${escapeHtml(line)}
+                    </p>
+                `;
+                qrGrid.appendChild(card);
+            });
+        }
+
+        // Regenerate if the user tweaks the output text manually
+        regenerateBtn.addEventListener('click', () => {
+            generateQRCodes(textOutput.value);
+        });
+
+        // Simple helper to prevent XSS injection in the preview paragraph
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
