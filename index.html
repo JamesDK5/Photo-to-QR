@@ -62,7 +62,6 @@
     </footer>
 
     <script>
-        // Your active OCR.space API Key configured safely
         const OCR_SPACE_KEY = 'K81999659888957'; 
 
         const imageInput = document.getElementById('imageInput');
@@ -74,6 +73,7 @@
         const regenerateBtn = document.getElementById('regenerateBtn');
         const qrSection = document.getElementById('qrSection');
         const qrGrid = document.getElementById('qrGrid');
+        const scaleCanvas = document.getElementById('scaleCanvas');
 
         imageInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -85,37 +85,88 @@
                 imagePreview.classList.remove('hidden');
                 previewPlaceholder.classList.add('hidden');
                 
-                runCloudOcr(file);
+                compressAndProcess(event.target.result);
             }
             reader.readAsDataURL(file);
         });
 
-        async function runCloudOcr(fileObject) {
+        function compressAndProcess(imageSrc) {
             textOutput.classList.add('hidden');
             statusContainer.classList.remove('hidden');
             regenerateBtn.classList.add('hidden');
             qrSection.classList.add('hidden');
-            statusText.innerText = "Analyzing text alignment...";
+            statusText.innerText = "Analyzing image composition...";
 
-            const formData = new FormData();
-            formData.append('apikey', OCR_SPACE_KEY);
-            formData.append('file', fileObject);
-            formData.append('language', 'eng');
-            formData.append('isOverlayRequired', 'false');
-            formData.append('OCREngine', '1'); // Engine 1 optimized for generic documents, hand-drawn shapes, and mixed layout strings
+            const img = new Image();
+            img.onload = function() {
+                const ctx = scaleCanvas.getContext('2d');
+                
+                // Normalise size boundaries to keep processing rapid
+                let width = img.width;
+                let height = img.height;
+                if (width > 1200) {
+                    height = Math.round((height * 1200) / width);
+                    width = 1200;
+                }
+                
+                scaleCanvas.width = width;
+                scaleCanvas.height = height;
+                
+                // FIX FOR PHOTOS: Reset image drawing coordinates to wipe out phone rotation metadata
+                ctx.clearRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Export as a clean, standardized JPEG string with no hidden camera headers
+                const base64Image = scaleCanvas.toDataURL('image/jpeg', 0.85);
+                runCloudOcr(base64Image);
+            };
+            img.src = imageSrc;
+        }
+
+        async function runCloudOcr(base64Data) {
+            statusText.innerText = "Extracting line items via Cloud AI...";
+
+            const details = {
+                'apikey': OCR_SPACE_KEY,
+                'base64Image': base64Data,
+                'language': 'eng',
+                'isOverlayRequired': 'false',
+                'OCREngine': '1'
+            };
+
+            let formBody = [];
+            for (let property in details) {
+                let encodedKey = encodeURIComponent(property);
+                let encodedValue = encodeURIComponent(details[property]);
+                formBody.push(encodedKey + "=" + encodedValue);
+            }
+            formBody = formBody.join("&");
 
             try {
                 const response = await fetch('https://api.ocr.space/parse/image', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                    },
+                    body: formBody
                 });
+
+                if (!response.ok) {
+                    throw new Error(`Connection drop: HTTP ${response.status}`);
+                }
 
                 const result = await response.json();
                 
-                if (result.OCRExitCode === 1) {
+                if (result.IsErroredOnProcessing) {
+                    const errorDetails = result.ErrorMessage ? result.ErrorMessage.join(", ") : "Processing limits hit.";
+                    throw new Error(errorDetails);
+                }
+
+                if (result.ParsedResults && result.ParsedResults.length > 0) {
                     const parsedText = result.ParsedResults[0].ParsedText;
                     
-                    const cleanedText = parsedText.split('\r\n')
+                    // Standardise line breaks cleanly
+                    const cleanedText = parsedText.split(/\r?\n/)
                                             .map(line => line.trim())
                                             .filter(line => line.length > 2)
                                             .join('\n');
@@ -127,12 +178,16 @@
 
                     generateQRCodes(cleanedText);
                 } else {
-                    throw new Error(result.ErrorMessage || "OCR parsing failed.");
+                    throw new Error("Could not find legible text lines.");
                 }
 
             } catch (error) {
                 console.error(error);
-                statusText.innerText = "Cloud Processing Error. Please verify connection.";
+                statusContainer.querySelector('.spinner').classList.add('hidden');
+                statusText.innerHTML = `
+                    <span class="text-red-500 font-bold">Cloud Image Error</span><br>
+                    <span class="text-xs text-gray-500 mt-1 block max-w-xs mx-auto">${error.message}</span>
+                `;
             }
         }
 
@@ -174,5 +229,6 @@
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
     </script>
+
 </body>
 </html>
