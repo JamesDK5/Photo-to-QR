@@ -58,208 +58,207 @@
     </div>
 
     <footer class="w-full text-center py-4 border-t border-gray-200 bg-gray-50 text-xs text-gray-400 tracking-wide">
-        Photo to QR Generator &bull; <span class="font-mono">v1.4.0</span>
+        Photo to QR Generator &bull;
+        <span class="font-mono">v1.3.0</span>
     </footer>
-<script>
-        const OCR_SPACE_KEY = 'K81999659888957'; // Note: Move to backend for production security [cite: 12]
-        const imageInput = document.getElementById('imageInput'); [cite: 12]
-        const imagePreview = document.getElementById('imagePreview'); [cite: 12]
-        const previewPlaceholder = document.getElementById('previewPlaceholder'); [cite: 12]
-        const textOutput = document.getElementById('textOutput'); [cite: 12]
-        const statusContainer = document.getElementById('statusContainer'); [cite: 12]
-        const statusText = document.getElementById('statusText'); [cite: 13]
-        const regenerateBtn = document.getElementById('regenerateBtn'); [cite: 13]
-        const qrSection = document.getElementById('qrSection'); [cite: 13]
-        const qrGrid = document.getElementById('qrGrid'); [cite: 13]
-        
-        // REMOVED: const scaleCanvas = document.getElementById('scaleCanvas'); 
-        // We will create this dynamically to prevent null reference errors.
-        
-        imageInput.addEventListener('change', function(e) { [cite: 14]
-            const file = e.target.files[0]; [cite: 14]
-            if (!file) return; [cite: 14]
-        
+
+    <script>
+        const OCR_SPACE_KEY = 'K81999659888957'; // Note: Move to backend for production security
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewPlaceholder = document.getElementById('previewPlaceholder');
+        const textOutput = document.getElementById('textOutput');
+        const statusContainer = document.getElementById('statusContainer');
+        const statusText = document.getElementById('statusText');
+        const regenerateBtn = document.getElementById('regenerateBtn');
+        const qrSection = document.getElementById('qrSection');
+        const qrGrid = document.getElementById('qrGrid');
+
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
             // Show the image preview instantly using standard object URLs
-            imagePreview.src = URL.createObjectURL(file); [cite: 14]
-            imagePreview.classList.remove('hidden'); [cite: 14]
-            previewPlaceholder.classList.add('hidden'); [cite: 14]
-            
+            imagePreview.src = URL.createObjectURL(file);
+            imagePreview.classList.remove('hidden');
+            previewPlaceholder.classList.add('hidden');
+          
             // Send the raw file directly to the high-speed processing engine
-            compressAndProcessMobile(file); [cite: 15]
-        
-            // FIX: Clear the input value so the change event fires if the user selects the same file again
+            compressAndProcessMobile(file);
+
+            // Clear the input value so the change event fires if the user selects the same file again
             e.target.value = '';
         });
-        
+
         // Hardware-accelerated scaling engine to prevent mobile thread locks
-        async function compressAndProcessMobile(fileObject) { [cite: 16]
-            textOutput.classList.add('hidden'); [cite: 16]
-            statusContainer.classList.remove('hidden'); [cite: 17]
-            regenerateBtn.classList.add('hidden'); [cite: 17]
-            qrSection.classList.add('hidden'); [cite: 17]
+        async function compressAndProcessMobile(fileObject) {
+            textOutput.classList.add('hidden');
+            statusContainer.classList.remove('hidden');
+            regenerateBtn.classList.add('hidden');
+            qrSection.classList.add('hidden');
             
             // Ensure spinner is visible if it was hidden during a previous error
             statusContainer.querySelector('.spinner').classList.remove('hidden');
-            statusText.innerText = "Optimizing picture layout size..."; [cite: 17]
-        
+            statusText.innerText = "Optimizing picture layout size...";
+
             try {
                 // Read the file's natural dimensions first without fully loading it
-                const bitmapHeader = await createImageBitmap(fileObject); [cite: 17]
-                const originalWidth = bitmapHeader.width; [cite: 18]
-                const originalHeight = bitmapHeader.height; [cite: 18]
-                bitmapHeader.close(); // Immediately release header memory [cite: 18]
-        
+                const bitmapHeader = await createImageBitmap(fileObject);
+                const originalWidth = bitmapHeader.width;
+                const originalHeight = bitmapHeader.height;
+                bitmapHeader.close(); // Immediately release header memory
+
                 // Calculate strict downscaling targets (Max 1200px)
-                const MAX_DIM = 1200; [cite: 18]
-                let targetWidth = originalWidth; [cite: 19]
-                let targetHeight = originalHeight; [cite: 19]
-        
-                if (originalWidth > originalHeight) { [cite: 19]
-                    if (originalWidth > MAX_DIM) { [cite: 19]
-                        targetHeight = Math.round((originalHeight * MAX_DIM) / originalWidth); [cite: 19]
-                        targetWidth = MAX_DIM; [cite: 20]
+                const MAX_DIM = 1200;
+                let targetWidth = originalWidth;
+                let targetHeight = originalHeight;
+
+                if (originalWidth > originalHeight) {
+                    if (originalWidth > MAX_DIM) {
+                        targetHeight = Math.round((originalHeight * MAX_DIM) / originalWidth);
+                        targetWidth = MAX_DIM;
                     }
                 } else {
-                    if (originalHeight > MAX_DIM) { [cite: 20]
-                        targetWidth = Math.round((originalWidth * MAX_DIM) / originalHeight); [cite: 20]
-                        targetHeight = MAX_DIM; [cite: 21]
+                    if (originalHeight > MAX_DIM) {
+                        targetWidth = Math.round((originalWidth * MAX_DIM) / originalHeight);
+                        targetHeight = MAX_DIM;
                     }
                 }
-        
+
                 // Use the browser's hardware-accelerated resizer.
-                const resizedBitmap = await createImageBitmap(fileObject, { [cite: 23]
-                    resizeWidth: targetWidth, [cite: 23]
-                    resizeHeight: targetHeight, [cite: 23]
-                    resizeQuality: 'high' [cite: 23]
+                const resizedBitmap = await createImageBitmap(fileObject, {
+                    resizeWidth: targetWidth,
+                    resizeHeight: targetHeight,
+                    resizeQuality: 'high'
                 });
-        
-                // FIX: Dynamically create the canvas here
+
+                // Dynamically create the canvas to avoid DOM reference issues
                 const scaleCanvas = document.createElement('canvas');
-                const ctx = scaleCanvas.getContext('2d'); [cite: 24]
-                scaleCanvas.width = targetWidth; [cite: 25]
-                scaleCanvas.height = targetHeight; [cite: 25]
+                const ctx = scaleCanvas.getContext('2d');
+                scaleCanvas.width = targetWidth;
+                scaleCanvas.height = targetHeight;
                 
                 // Clear and paint the clean bitmap
-                ctx.clearRect(0, 0, targetWidth, targetHeight); [cite: 25]
-                ctx.drawImage(resizedBitmap, 0, 0); [cite: 26]
+                ctx.clearRect(0, 0, targetWidth, targetHeight);
+                ctx.drawImage(resizedBitmap, 0, 0);
                 
                 // Release the bitmap from memory immediately after drawing
-                resizedBitmap.close(); [cite: 26]
-        
+                resizedBitmap.close();
+
                 // Export compressed JPEG string for cloud upload
-                const base64Image = scaleCanvas.toDataURL('image/jpeg', 0.8); [cite: 27]
-                runCloudOcr(base64Image); [cite: 28]
-        
+                const base64Image = scaleCanvas.toDataURL('image/jpeg', 0.8);
+                runCloudOcr(base64Image);
+
             } catch (err) {
-                console.error(err); [cite: 28]
+                console.error(err);
                 statusContainer.querySelector('.spinner').classList.add('hidden');
-                statusText.innerHTML = `<span class="text-red-500 font-bold">Optimization Failed</span><br><span class="text-xs text-gray-500 mt-1 block">Your device blocked the image resizing step or does not support hardware acceleration.</span>`; [cite: 29]
+                statusText.innerHTML = `<span class="text-red-500 font-bold">Optimization Failed</span><br><span class="text-xs text-gray-500 mt-1 block">Your device blocked the image resizing step or lacks hardware acceleration.</span>`;
             }
         }
-        
-        async function runCloudOcr(base64Data) { [cite: 30]
-            statusText.innerText = "Extracting line items via Cloud AI..."; [cite: 30]
+
+        async function runCloudOcr(base64Data) {
+            statusText.innerText = "Extracting line items via Cloud AI...";
             
-            const details = { [cite: 30]
-                'apikey': OCR_SPACE_KEY, [cite: 31]
-                'base64Image': base64Data, [cite: 31]
-                'language': 'eng', [cite: 31]
-                'isOverlayRequired': 'false', [cite: 31]
-                'OCREngine': '1' [cite: 31]
-            }; [cite: 32]
-        
-            let formBody = []; [cite: 32]
-            for (let property in details) { [cite: 32]
-                let encodedKey = encodeURIComponent(property); [cite: 32]
-                let encodedValue = encodeURIComponent(details[property]); [cite: 33]
-                formBody.push(encodedKey + "=" + encodedValue); [cite: 33]
+            const details = {
+                'apikey': OCR_SPACE_KEY,
+                'base64Image': base64Data,
+                'language': 'eng',
+                'isOverlayRequired': 'false',
+                'OCREngine': '1'
+            };
+
+            let formBody = [];
+            for (let property in details) {
+                let encodedKey = encodeURIComponent(property);
+                let encodedValue = encodeURIComponent(details[property]);
+                formBody.push(encodedKey + "=" + encodedValue);
             }
-            formBody = formBody.join("&"); [cite: 33]
-        
+            formBody = formBody.join("&");
+
             try {
-                const response = await fetch('https://api.ocr.space/parse/image', { [cite: 34]
-                    method: 'POST', [cite: 34]
-                    headers: { [cite: 34]
-                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' [cite: 34]
-                    }, [cite: 35]
-                    body: formBody [cite: 35]
+                const response = await fetch('https://api.ocr.space/parse/image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                    },
+                    body: formBody
                 });
-        
-                if (!response.ok) { [cite: 36]
-                    throw new Error(`Connection drop: HTTP ${response.status}`); [cite: 36]
+
+                if (!response.ok) {
+                    throw new Error(`Connection drop: HTTP ${response.status}`);
                 }
-        
-                const result = await response.json(); [cite: 37]
+
+                const result = await response.json();
                 
-                if (result.IsErroredOnProcessing) { [cite: 38]
-                    const errorDetails = result.ErrorMessage ? result.ErrorMessage.join(", ") : "Processing limits hit."; [cite: 38, 39]
-                    throw new Error(errorDetails); [cite: 39]
+                if (result.IsErroredOnProcessing) {
+                    const errorDetails = result.ErrorMessage ? result.ErrorMessage.join(", ") : "Processing limits hit.";
+                    throw new Error(errorDetails);
                 }
-        
-                if (result.ParsedResults && result.ParsedResults.length > 0) { [cite: 39]
-                    const parsedText = result.ParsedResults[0].ParsedText; [cite: 39]
-                    const cleanedText = parsedText.split(/\r?\n/) [cite: 40]
-                                                .map(line => line.trim()) [cite: 40]
-                                                .filter(line => line.length > 2) [cite: 40]
-                                                .join('\n'); [cite: 41]
+
+                if (result.ParsedResults && result.ParsedResults.length > 0) {
+                    const parsedText = result.ParsedResults[0].ParsedText;
+                    const cleanedText = parsedText.split(/\r?\n/)
+                                                .map(line => line.trim())
+                                                .filter(line => line.length > 2)
+                                                .join('\n');
                     
-                    textOutput.value = cleanedText; [cite: 42]
-                    statusContainer.classList.add('hidden'); [cite: 42]
-                    textOutput.classList.remove('hidden'); [cite: 42]
-                    regenerateBtn.classList.remove('hidden'); [cite: 42]
-        
-                    generateQRCodes(cleanedText); [cite: 42]
+                    textOutput.value = cleanedText;
+                    statusContainer.classList.add('hidden');
+                    textOutput.classList.remove('hidden');
+                    regenerateBtn.classList.remove('hidden');
+
+                    generateQRCodes(cleanedText);
                 } else {
-                    throw new Error("Could not find legible text lines."); [cite: 42]
+                    throw new Error("Could not find legible text lines.");
                 }
-        
+
             } catch (error) {
-                console.error(error); [cite: 43]
-                statusContainer.querySelector('.spinner').classList.add('hidden'); [cite: 44]
-                statusText.innerHTML = ` [cite: 44]
-                    <span class="text-red-500 font-bold">Cloud Image Error</span><br> [cite: 44]
-                    <span class="text-xs text-gray-500 mt-1 block max-w-xs mx-auto">${error.message}</span> [cite: 44]
-                `; [cite: 44]
+                console.error(error);
+                statusContainer.querySelector('.spinner').classList.add('hidden');
+                statusText.innerHTML = `
+                    <span class="text-red-500 font-bold">Cloud Image Error</span><br>
+                    <span class="text-xs text-gray-500 mt-1 block max-w-xs mx-auto">${error.message}</span>
+                `;
             }
         }
-        
-        function generateQRCodes(text) { [cite: 45]
-            qrGrid.innerHTML = ''; [cite: 45]
-            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0); [cite: 46]
+
+        function generateQRCodes(text) {
+            qrGrid.innerHTML = '';
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             
-            if (lines.length === 0) { [cite: 47]
-                qrSection.classList.add('hidden'); [cite: 47]
-                return; [cite: 48]
+            if (lines.length === 0) {
+                qrSection.classList.add('hidden');
+                return;
             }
-        
-            qrSection.classList.remove('hidden'); [cite: 48]
+
+            qrSection.classList.remove('hidden');
             
-            lines.forEach((line, index) => { [cite: 49]
-                const encodedText = encodeURIComponent(line); [cite: 49]
-                const qrUrl = `https://quickchart.io/qr?text=${encodedText}&size=200&margin=2&ecLevel=M`; [cite: 49]
-        
-                const card = document.createElement('div'); [cite: 49]
-                card.className = "bg-white p-4 rounded-xl shadow border border-gray-100 flex flex-col items-center justify-between text-center"; [cite: 49]
-                card.innerHTML = ` [cite: 50]
-                    <div class="w-full text-xs font-semibold text-gray-400 mb-2 text-left">LINE ${index + 1}</div> [cite: 50]
-                    <div class="bg-gray-50 p-2 rounded-lg mb-3 flex items-center justify-center min-h-[160px]"> [cite: 50]
-                        <img src="${qrUrl}" alt="QR" class="w-40 h-40 object-contain"> [cite: 50]
-                    </div> [cite: 51]
-                    <p class="text-xs text-gray-700 font-mono break-all line-clamp-2 w-full bg-gray-50 p-1.5 rounded border border-gray-200"> [cite: 51]
-                        ${escapeHtml(line)} [cite: 51]
-                    </p> [cite: 51]
-                `; [cite: 52]
-                qrGrid.appendChild(card); [cite: 52]
+            lines.forEach((line, index) => {
+                const encodedText = encodeURIComponent(line);
+                const qrUrl = `https://quickchart.io/qr?text=${encodedText}&size=200&margin=2&ecLevel=M`;
+
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-xl shadow border border-gray-100 flex flex-col items-center justify-between text-center";
+                card.innerHTML = `
+                    <div class="w-full text-xs font-semibold text-gray-400 mb-2 text-left">LINE ${index + 1}</div>
+                    <div class="bg-gray-50 p-2 rounded-lg mb-3 flex items-center justify-center min-h-[160px]">
+                        <img src="${qrUrl}" alt="QR" class="w-40 h-40 object-contain">
+                    </div>
+                    <p class="text-xs text-gray-700 font-mono break-all line-clamp-2 w-full bg-gray-50 p-1.5 rounded border border-gray-200">
+                        ${escapeHtml(line)}
+                    </p>
+                `;
+                qrGrid.appendChild(card);
             });
         }
-        
-        regenerateBtn.addEventListener('click', () => { [cite: 52]
-            generateQRCodes(textOutput.value); [cite: 52]
-        }); [cite: 52]
-        
-        function escapeHtml(text) { [cite: 53]
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); [cite: 53]
-        } [cite: 54]
+
+        regenerateBtn.addEventListener('click', () => {
+            generateQRCodes(textOutput.value);
+        });
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
     </script>
 </body>
 </html>
