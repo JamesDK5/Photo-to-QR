@@ -24,14 +24,14 @@
 
     <div class="max-w-3xl mx-auto px-4 py-8 w-full flex-grow">
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">🚀 Convert photos of text to QR codes</h1>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">🚀 Convert text to QR codes by photo</h1>
             <p class="text-gray-600">Take a photo of text or input text into the box, and each line of text detected will then be converted into a QR code. Powered by OCR.space to handle print, screenshots, and handwriting. Uses quickchart.io to generate QR codes.</p>
         </header>
 
         <div class="bg-white p-6 rounded-xl shadow-md mb-6 flex flex-col justify-center items-center">
             <label class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg cursor-pointer transition-all shadow-sm">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                <span>Select Image / Screenshot</span>
+                <span>Take Photo / Select Image</span>
                 <input type="file" id="imageInput" accept="image/*" class="hidden">
             </label>
         </div>
@@ -64,7 +64,7 @@
                 
                 <button id="shareBtn" class="flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-medium py-2 px-4 rounded-lg transition-colors text-sm w-full sm:w-auto">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-5.368m0 5.368l5.662 3.397m-5.662-3.397l5.662-3.397M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span id="shareText">Share Results Link</span>
+                    <span id="shareText">Share Link to QR Codes</span>
                 </button>
             </div>
             
@@ -74,7 +74,7 @@
 
     <footer class="w-full text-center py-4 border-t border-gray-200 bg-gray-50 text-xs text-gray-400 tracking-wide">
         Photo to QR Generator &bull;
-        <span class="font-mono">v1.6.0</span>
+        <span class="font-mono">v1.6.1</span>
     </footer>
 
     <div id="qrModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm transition-opacity">
@@ -227,7 +227,7 @@
                 'base64Image': base64Data,
                 'language': 'eng',
                 'isOverlayRequired': 'false',
-                'OCREngine': '1'
+                'OCREngine': '3'
             };
 
             let formBody = [];
