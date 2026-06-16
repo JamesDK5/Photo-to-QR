@@ -18,63 +18,66 @@
         
         /* Prevents background scrolling when modal is open */
         body.modal-open { overflow: hidden; }
+        
+        /* Smooth scrolling for page jumps */
+        html { scroll-behavior: smooth; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans flex flex-col justify-between">
 
-    <div class="max-w-3xl mx-auto px-4 py-8 w-full flex-grow">
+    <div class="max-w-3xl mx-auto px-4 py-8 w-full flex-grow relative">
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">🚀 Convert text to QR codes by photo</h1>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">🚀 Convert photos of text to QR codes</h1>
             <p class="text-gray-600">Take a photo of text or input text into the box, and each line of text detected will then be converted into a QR code. Powered by OCR.space to handle print, screenshots, and handwriting. Uses quickchart.io to generate QR codes.</p>
         </header>
 
-        <div class="bg-white p-6 rounded-xl shadow-md mb-6 flex flex-col justify-center items-center">
-            <label class="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg cursor-pointer transition-all shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                <span>Take Photo / Select Image</span>
-                <input type="file" id="imageInput" accept="image/*" class="hidden">
-            </label>
-        </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div id="previewContainer" class="bg-white p-4 rounded-xl shadow-md flex flex-col items-center justify-center min-h-[250px] border-2 border-dashed border-gray-300">
-                <p id="previewPlaceholder" class="text-gray-400 text-sm text-center">Your image preview</p>
-                <img id="imagePreview" class="max-h-64 rounded-lg hidden shadow-sm" alt="Preview">
+            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col justify-center items-center min-h-[200px]">
+                <label class="w-full flex flex-col items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-6 rounded-lg cursor-pointer transition-all shadow-sm text-center h-full">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span>Select Image / Screenshot</span>
+                    <input type="file" id="imageInput" accept="image/*" class="hidden">
+                </label>
             </div>
 
-            <div class="bg-white p-4 rounded-xl shadow-md flex flex-col min-h-[250px]">
-                <h3 class="text-lg font-semibold text-gray-700 mb-2 border-b pb-1">📝 Text Input</h3>
-                
-                <div id="statusContainer" class="hidden flex-col items-center justify-center flex-grow py-4">
-                    <div class="spinner mb-2"></div>
-                    <p id="statusText" class="text-blue-600 font-medium text-sm">Consulting Cloud AI...</p>
-                </div>
-                
-                <textarea id="textOutput" class="w-full flex-grow p-2 border border-gray-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type text here, or upload an image to extract automatically..."></textarea>
-                
-                <button id="regenerateBtn" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition-all">
+            <div id="previewContainer" class="bg-white p-6 rounded-xl shadow-md flex flex-col items-center justify-center min-h-[200px] border-2 border-dashed border-gray-300">
+                <p id="previewPlaceholder" class="text-gray-400 text-sm text-center">Your image preview</p>
+                <img id="imagePreview" class="max-h-48 rounded-lg hidden shadow-sm object-contain" alt="Preview">
+            </div>
+        </div>
+
+        <div id="textInputWrapper" class="bg-white p-6 rounded-xl shadow-md flex flex-col mb-6 sticky top-4 z-40 border border-gray-100 shadow-lg">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b pb-3">
+                <h3 class="text-lg font-semibold text-gray-700">Text Input</h3>
+                <button id="regenerateBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition-all text-sm w-full sm:w-auto shadow-sm">
                     Generate QR Codes
                 </button>
             </div>
+            
+            <div id="statusContainer" class="hidden flex-col items-center justify-center py-6">
+                <div class="spinner mb-3"></div>
+                <p id="statusText" class="text-blue-600 font-medium text-sm">Consulting Cloud AI...</p>
+            </div>
+            
+            <textarea id="textOutput" class="w-full flex-grow p-3 border border-gray-200 rounded-lg resize-y min-h-[120px] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type text here, or upload an image to extract automatically..."></textarea>
         </div>
 
         <div id="qrSection" class="hidden bg-white p-6 rounded-xl shadow-md mb-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3 border-b pb-4">
-                <h2 class="text-lg font-bold text-gray-800">🎉 Generated QR Codes</h2>
+                <h2 class="text-xl font-bold text-gray-800">🎯 Generated QR Codes</h2>
                 
                 <button id="shareBtn" class="flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-medium py-2 px-4 rounded-lg transition-colors text-sm w-full sm:w-auto">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-5.368m0 5.368l5.662 3.397m-5.662-3.397l5.662-3.397M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span id="shareText">Share Link to QR Codes</span>
+                    <span id="shareText">Share Results Link</span>
                 </button>
             </div>
             
-            <div id="qrGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+            <div id="qrGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
         </div>
     </div>
 
     <footer class="w-full text-center py-4 border-t border-gray-200 bg-gray-50 text-xs text-gray-400 tracking-wide">
-        Photo to QR Generator &bull;
-        <span class="font-mono">v1.6.1</span>
+        Photo to QR Generator &bull; <span class="font-mono">v1.7.0</span>
     </footer>
 
     <div id="qrModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm transition-opacity">
@@ -116,7 +119,6 @@
         const shareBtn = document.getElementById('shareBtn');
         const shareText = document.getElementById('shareText');
 
-        // Modal State Variables
         let qrDataList = [];
         let currentQRIndex = 0;
 
@@ -129,16 +131,23 @@
             
             if (sharedData) {
                 try {
-                    // Decode the Base64 URL parameter safely handling unicode characters
                     const decodedText = decodeURIComponent(escape(atob(sharedData)));
                     textOutput.value = decodedText;
                     
-                    // Hide empty preview logic and auto-generate the codes
                     previewPlaceholder.innerText = "Shared document loaded.";
                     textOutput.classList.remove('hidden');
                     regenerateBtn.classList.remove('hidden');
                     
                     generateQRCodes(decodedText);
+
+                    // Auto-Jump smoothly down to the input box once fully parsed
+                    setTimeout(() => {
+                        const wrapper = document.getElementById('textInputWrapper');
+                        if (wrapper) {
+                            wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 250);
+
                 } catch (e) {
                     console.error("Could not parse shared link data.", e);
                 }
@@ -159,7 +168,6 @@
             compressAndProcessMobile(file);
             e.target.value = '';
             
-            // Remove sharing params from URL visually without reloading page
             window.history.replaceState({}, document.title, window.location.pathname);
         });
 
@@ -215,7 +223,7 @@
             } catch (err) {
                 console.error(err);
                 statusContainer.querySelector('.spinner').classList.add('hidden');
-                statusText.innerHTML = `<span class="text-red-500 font-bold">Optimization Failed</span><br><span class="text-xs text-gray-500 mt-1 block">Your device blocked the image resizing step or lacks hardware acceleration.</span>`;
+                statusText.innerHTML = `<span class="text-red-500 font-bold">Optimization Failed</span><br><span class="text-xs text-gray-500 mt-1 block">Hardware acceleration issue or process blocked by the device.</span>`;
             }
         }
 
@@ -227,7 +235,7 @@
                 'base64Image': base64Data,
                 'language': 'eng',
                 'isOverlayRequired': 'false',
-                'OCREngine': '3'
+                'OCREngine': '1'
             };
 
             let formBody = [];
@@ -323,7 +331,6 @@
                 qrGrid.appendChild(card);
             });
             
-            // Clean up sharing parameters if the user modifies text manually after loading a shared link
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -335,7 +342,6 @@
             const currentText = textOutput.value.trim();
             if (!currentText) return;
 
-            // Base64 encode the string (handling unicode chars correctly)
             const encodedData = btoa(unescape(encodeURIComponent(currentText)));
             const shareUrl = `${window.location.origin}${window.location.pathname}?d=${encodedData}`;
 
@@ -346,7 +352,7 @@
                 shareBtn.classList.add('text-emerald-700', 'bg-emerald-50', 'border-emerald-200');
                 
                 setTimeout(() => {
-                    shareText.innerText = "Share Link to QR Codes";
+                    shareText.innerText = "Share Results Link";
                     shareBtn.classList.add('text-indigo-600', 'bg-indigo-50');
                     shareBtn.classList.remove('text-emerald-700', 'bg-emerald-50', 'border-emerald-200');
                 }, 2500);
@@ -398,17 +404,14 @@
             updateModalUI();
         }
 
-        // Click Listeners
         document.getElementById('closeModalBtn').addEventListener('click', closeModal);
         document.getElementById('nextBtn').addEventListener('click', (e) => { e.stopPropagation(); showNext(); });
         document.getElementById('prevBtn').addEventListener('click', (e) => { e.stopPropagation(); showPrev(); });
         
-        // Close modal if user clicks the dark background
         qrModal.addEventListener('click', (e) => {
             if (e.target === qrModal) closeModal();
         });
 
-        // Touch / Swipe Listeners
         let touchStartX = 0;
         let touchEndX = 0;
 
@@ -426,13 +429,12 @@
             const distance = touchStartX - touchEndX;
             
             if (distance > SWIPE_THRESHOLD) {
-                showNext(); // Swiped left
+                showNext(); 
             } else if (distance < -SWIPE_THRESHOLD) {
-                showPrev(); // Swiped right
+                showPrev(); 
             }
         }
 
-        // Keyboard Navigation
         document.addEventListener('keydown', (e) => {
             if (qrModal.classList.contains('hidden')) return;
             if (e.key === 'ArrowRight') showNext();
