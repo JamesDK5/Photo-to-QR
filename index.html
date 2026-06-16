@@ -60,7 +60,6 @@
     <footer class="w-full text-center py-4 border-t border-gray-200 bg-gray-50 text-xs text-gray-400 tracking-wide">
         Photo to QR Generator &bull; <span class="font-mono">v1.3.0</span>
     </footer>
-
 <script>
         const OCR_SPACE_KEY = 'K81999659888957'; 
 
@@ -79,76 +78,75 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                imagePreview.src = event.target.result;
-                imagePreview.classList.remove('hidden');
-                previewPlaceholder.classList.add('hidden');
-                
-                compressAndProcess(event.target.result);
-            }
-            reader.readAsDataURL(file);
+            // Show the image preview instantly using standard object URLs
+            imagePreview.src = URL.createObjectURL(file);
+            imagePreview.classList.remove('hidden');
+            previewPlaceholder.classList.add('hidden');
+            
+            // Send the raw file directly to the high-speed processing engine
+            compressAndProcessMobile(file);
         });
 
-        function compressAndProcess(imageSrc) {
+        // Hardware-accelerated scaling engine to prevent mobile thread locks
+        async function compressAndProcessMobile(fileObject) {
             textOutput.classList.add('hidden');
             statusContainer.classList.remove('hidden');
             regenerateBtn.classList.add('hidden');
             qrSection.classList.add('hidden');
             statusText.innerText = "Optimizing picture layout size...";
 
-            const img = new Image();
-            
-            // CRITICAL MEMORY FIX FOR MOBILE:
-            // Force a low-profile target size on the image object BEFORE it loads into memory.
-            // This prevents high-res phone photos from crashing the canvas thread.
-            img.style.maxWidth = "1000px";
-            img.style.maxHeight = "1000px";
+            try {
+                // Read the file's natural dimensions first without fully loading it
+                const bitmapHeader = await createImageBitmap(fileObject);
+                const originalWidth = bitmapHeader.width;
+                const originalHeight = bitmapHeader.height;
+                bitmapHeader.close(); // Immediately release header memory
 
-            img.onload = function() {
-                const ctx = scaleCanvas.getContext('2d');
-                
-                // Calculate scale constraints using a low maximum ceiling (1000px)
-                const MAX_WIDTH = 1000;
-                const MAX_HEIGHT = 1000;
-                let width = img.width;
-                let height = img.height;
+                // Calculate strict downscaling targets (Max 1200px)
+                const MAX_DIM = 1200;
+                let targetWidth = originalWidth;
+                let targetHeight = originalHeight;
 
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
+                if (originalWidth > originalHeight) {
+                    if (originalWidth > MAX_DIM) {
+                        targetHeight = Math.round((originalHeight * MAX_DIM) / originalWidth);
+                        targetWidth = MAX_DIM;
                     }
                 } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
+                    if (originalHeight > MAX_DIM) {
+                        targetWidth = Math.round((originalWidth * MAX_DIM) / originalHeight);
+                        targetHeight = MAX_DIM;
                     }
                 }
-                
-                scaleCanvas.width = width;
-                scaleCanvas.height = height;
-                
-                // Completely clear context state to wipe out rotation flags
-                ctx.clearRect(0, 0, width, height);
-                ctx.drawImage(img, 0, 0, width, height);
 
-                try {
-                    // Export compressed JPEG string at a lower quality (0.7) to shrink network data
-                    const base64Image = scaleCanvas.toDataURL('image/jpeg', 0.7);
-                    runCloudOcr(base64Image);
-                } catch (canvasError) {
-                    console.error(canvasError);
-                    statusText.innerHTML = `<span class="text-red-500 font-bold">Canvas Error</span><br><span class="text-xs text-gray-500">Failed to convert image data.</span>`;
-                }
-            };
-            
-            // Triggers error state if the file format itself causes an underlying issue
-            img.onerror = function() {
-                statusText.innerHTML = `<span class="text-red-500 font-bold">Image Load Error</span><br><span class="text-xs text-gray-500">The file structure could not be processed.</span>`;
-            };
+                // CRITICAL FIX: Use the browser's hardware-accelerated resizer.
+                // This downscales the image at the system level before it enters our JS memory.
+                const resizedBitmap = await createImageBitmap(fileObject, {
+                    resizeWidth: targetWidth,
+                    resizeHeight: targetHeight,
+                    resizeQuality: 'high'
+                });
 
-            img.src = imageSrc;
+                // Match the hidden processing canvas to our safe dimensions
+                const ctx = scaleCanvas.getContext('2d');
+                scaleCanvas.width = targetWidth;
+                scaleCanvas.height = targetHeight;
+                
+                // Clear and paint the clean bitmap
+                ctx.clearRect(0, 0, targetWidth, targetHeight);
+                ctx.drawImage(resizedBitmap, 0, 0);
+                
+                // Release the bitmap from memory immediately after drawing
+                resizedBitmap.close();
+
+                // Export compressed JPEG string for cloud upload
+                const base64Image = scaleCanvas.toDataURL('image/jpeg', 0.8);
+                runCloudOcr(base64Image);
+
+            } catch (err) {
+                console.error(err);
+                statusText.innerHTML = `<span class="text-red-500 font-bold">Optimization Failed</span><br><span class="text-xs text-gray-500 mt-1 block">Your device blocked the image resizing step.</span>`;
+            }
         }
 
         async function runCloudOcr(base64Data) {
